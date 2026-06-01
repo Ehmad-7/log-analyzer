@@ -4,7 +4,7 @@ import json
 
 from datetime import datetime, timezone
 
-from models import LogEntry
+from .models import LogEntry
 
 
 def parse_response_time(value: str) -> float:
