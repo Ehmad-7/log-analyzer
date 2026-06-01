@@ -198,3 +198,15 @@ def parse_json_log(line: str) -> LogEntry:
         response_time_ms=response_time_ms,
     )
 
+
+def parse_line(line: str) -> LogEntry | None:
+    try:
+        return parse_json_log(line)
+    except ValueError:
+        pass
+
+    try:
+        return parse_text_log(line)
+    except ValueError:
+        return None
+
