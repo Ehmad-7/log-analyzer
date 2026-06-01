@@ -1,5 +1,7 @@
 """Parsing helpers for the log analyzer."""
 
+import json
+
 from datetime import datetime, timezone
 
 from models import LogEntry
@@ -140,18 +142,59 @@ def parse_text_log(line: str) -> LogEntry:
     )
 
 
-parse_text_log(
-    "2024-03-15T14:23:01Z 192.168.1.42 GET /api/users 200 142ms"
-)
+def parse_json_log(line: str) -> LogEntry:
+    """Parse a JSON-encoded log line into a LogEntry."""
+    if line is None:
+        raise ValueError("log line is required")
 
-parse_text_log(
-    "2024/03/15 14:23:01 192.168.1.42 GET /api/users 200 142ms"
-)
+    raw = line.strip()
+    if not raw:
+        raise ValueError("log line is empty")
 
-parse_text_log(
-    "15-Mar-2024 14:23:01 192.168.1.42 GET /api/users 200 142ms"
-)
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise ValueError("invalid json log line") from exc
 
-parse_text_log(
-    "1710512581 192.168.1.42 GET /api/users 200 142ms"
-)
+    if not isinstance(payload, dict):
+        raise ValueError("invalid json log line")
+
+    required_fields = ["timestamp", "ip", "method", "path", "response_time"]
+    missing = [field for field in required_fields if field not in payload]
+    if missing:
+        missing_fields = ", ".join(missing)
+        raise ValueError(f"missing required fields: {missing_fields}")
+
+    ip = payload.get("ip")
+    method = payload.get("method")
+    path = payload.get("path")
+    if not isinstance(ip, str) or not ip.strip():
+        raise ValueError(f"invalid ip '{ip}'")
+    if not isinstance(method, str) or not method.strip():
+        raise ValueError(f"invalid method '{method}'")
+    if not isinstance(path, str) or not path.strip():
+        raise ValueError(f"invalid path '{path}'")
+
+    status_value = payload.get("status")
+    status = None
+    if status_value is not None and status_value != "-":
+        try:
+            status = int(status_value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"invalid status '{status_value}'") from exc
+
+    try:
+        timestamp = parse_timestamp(str(payload.get("timestamp")))
+        response_time_ms = parse_response_time(str(payload.get("response_time")))
+    except ValueError as exc:
+        raise ValueError("invalid json log line") from exc
+
+    return LogEntry(
+        timestamp=timestamp,
+        ip=ip.strip(),
+        method=method.strip(),
+        path=path.strip(),
+        status=status,
+        response_time_ms=response_time_ms,
+    )
+
