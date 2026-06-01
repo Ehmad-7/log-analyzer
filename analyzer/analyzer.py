@@ -3,6 +3,7 @@
 from collections import Counter
 
 from .models import LogEntry
+from .parser import parse_line
 
 
 class LogAnalyzer:
@@ -38,6 +39,16 @@ class LogAnalyzer:
         """Record a malformed log line in aggregate statistics."""
         self.total_lines += 1
         self.malformed_lines += 1
+
+    def process_file(self, file_path: str) -> None:
+        """Process a log file line by line and update statistics."""
+        with open(file_path, "r", encoding="utf-8") as handle:
+            for line in handle:
+                entry = parse_line(line)
+                if entry is None:
+                    self.process_malformed_line()
+                else:
+                    self.process_entry(entry)
 
     @property
     def unique_ip_count(self) -> int:
