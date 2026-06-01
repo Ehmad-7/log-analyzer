@@ -80,3 +80,68 @@ class LogAnalyzer:
 
         averages.sort(key=lambda item: item[1], reverse=True)
         return averages[:limit]
+
+    def generate_report(self) -> str:
+        """Generate a human-readable summary of analyzer statistics."""
+        lines: list[str] = [
+            f"Total lines: {self.total_lines}",
+            f"Valid entries: {self.valid_lines}",
+            f"Malformed entries: {self.malformed_lines}",
+            "",
+            "Status Codes",
+            "------------",
+        ]
+
+        if self.status_code_counts:
+            for status_code, count in self.status_code_counts.most_common():
+                lines.append(f"{status_code} : {count}")
+        else:
+            lines.append("None")
+
+        lines.extend([
+            "",
+            "Top Endpoints",
+            "-------------",
+        ])
+
+        top_endpoints = self.endpoint_counts.most_common(10)
+        if top_endpoints:
+            for endpoint, count in top_endpoints:
+                lines.append(f"{endpoint} : {count}")
+        else:
+            lines.append("None")
+
+        lines.extend([
+            "",
+            "Top Error Endpoints",
+            "-------------------",
+        ])
+
+        top_errors = self.top_error_endpoints(10)
+        if top_errors:
+            for endpoint, count in top_errors:
+                lines.append(f"{endpoint} : {count}")
+        else:
+            lines.append("None")
+
+        lines.extend([
+            "",
+            "Top Slow Endpoints",
+            "------------------",
+        ])
+
+        top_slowest = self.top_slowest_endpoints(10)
+        if top_slowest:
+            for endpoint, avg_ms in top_slowest:
+                lines.append(f"{endpoint} : {avg_ms:.2f} ms")
+        else:
+            lines.append("None")
+
+        lines.extend([
+            "",
+            "Unique IPs",
+            "----------",
+            f"{self.unique_ip_count}",
+        ])
+
+        return "\n".join(lines)
